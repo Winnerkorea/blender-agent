@@ -259,15 +259,17 @@ if hit:
 This means any object in the scene without `laser_reflect = True` will absorb the laser.
 Useful for obstacles, characters, furniture, etc.
 
-### Excluding beams from ray_cast
+### Excluding beams and volumes from ray_cast
 
-`scene.ray_cast()` hits ALL visible scene geometry. The beam meshes themselves will
-block rays if visible. **Set `hide_viewport = True` before raycasting, restore after.
-Do NOT call `depsgraph.update()`:**
+`scene.ray_cast()` hits ALL visible scene geometry. Both beam meshes and **fog volume
+cubes** will block rays if visible. **Hide all non-scene objects before raycasting:**
 
 ```python
-# Hide beam segments (and any volume objects)
-for obj in seg_objs:
+# Hide beam segments AND volume objects (fog cubes)
+hide_objs = [o for o in bpy.data.objects
+             if o.get("is_laser_beam") or o.get("is_laser_segment")
+             or "fog" in o.name.lower() or "volume" in o.name.lower()]
+for obj in hide_objs:
     obj.hide_viewport = True
 
 # DO NOT call depsgraph.update() here — it causes crashes and stutter
@@ -429,5 +431,56 @@ material. This gives clean, per-segment brightness control.
 
 Enable `material.use_backface_culling = True` on room walls so you can orbit the camera
 outside the room and see through walls in Material Preview mode. Invaluable for debugging
-beam paths.
+beam paths. Note: backface culling hides walls from Cycles renders too — disable for final
+renders when the camera is outside the room.
+
+## Combining with projector spotlight (multi-laser fan)
+
+Use the `blender-projector` dots pattern to create a multi-laser fan effect. The spotlight
+projects dots via shader nodes (Cycles only), and Python raycasting traces laser beams from
+each dot hit point with reflections. This creates a "disco laser" effect where the cone angle
+controls beam spread.
+
+**Approach:**
+1. Set up a Cycles spotlight with the dots pattern (see `blender-projector` skill)
+2. Compute dot center directions from the spotlight's angular space
+3. Cast rays from the spotlight origin along those directions to find hit points
+4. From each hit point, trace reflected lasers using the standard raycast approach
+
+**Computing dot ray directions from spotlight:**
+
+The dot centers in the spotlight's Normal texture coordinate space are at
+`(i + 0.5) / DOT_SCALE` for integer i, mapped to world-space directions:
+
+```python
+spot = bpy.data.objects["Projector"]
+spot_matrix = spot.matrix_world
+spot_pos = spot_matrix.translation.copy()
+half_angle = spot.data.spot_size / 2.0
+
+local_x = (spot_matrix.to_3x3() @ Vector((1, 0, 0))).normalized()
+local_y = (spot_matrix.to_3x3() @ Vector((0, 1, 0))).normalized()
+local_z = (spot_matrix.to_3x3() @ Vector((0, 0, -1))).normalized()  # spot forward
+tan_half = math.tan(half_angle)
+
+DOT_SCALE = 3  # must match Mapping node Scale on the light
+dot_rays = []
+for i in range(-DOT_SCALE, DOT_SCALE + 1):
+    for j in range(-DOT_SCALE, DOT_SCALE + 1):
+        nx = (i + 0.5) / DOT_SCALE
+        ny = (j + 0.5) / DOT_SCALE
+        if math.sqrt(nx*nx + ny*ny) <= 0.95:  # inside cone
+            offset_x = nx * tan_half
+            offset_y = ny * tan_half
+            direction = local_z + offset_x * local_x + offset_y * local_y
+            direction.normalize()
+            dot_rays.append(direction)
+```
+
+**Key details:**
+- `DOT_SCALE` must match the Mapping node's Scale on the spotlight
+- Fewer dots (scale 2-3) are more readable than many (scale 5+)
+- The `spot_size` (cone angle) controls the fan spread — wider = more spread
+- Hide FogVolume during raycasting (it's a mesh that blocks rays)
+- Each dot becomes a laser origin: cast from spotlight → first hit, then reflect
 
