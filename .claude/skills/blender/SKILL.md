@@ -29,6 +29,21 @@ PYEOF
 **Important**: Always use `<<'PYEOF'` (quoted delimiter) so the shell doesn't
 expand `$variables` or backticks inside the Python code.
 
+### Large scripts
+
+For scripts longer than ~100 lines, write to a temp file and exec it instead of
+inlining in the heredoc. This avoids shell/curl issues with large POST bodies:
+```bash
+cat > /tmp/blender_script.py <<'PYEOF'
+import bpy
+# ... long script ...
+PYEOF
+
+curl -s localhost:5656 --data-binary @- <<'PYEOF'
+exec(open("/tmp/blender_script.py").read())
+PYEOF
+```
+
 ## Response format
 
 ```json

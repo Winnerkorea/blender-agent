@@ -93,6 +93,8 @@ def _exec_code(code):
 
 
 class Handler(BaseHTTPRequestHandler):
+    protocol_version = "HTTP/1.1"  # enables Expect: 100-continue handling
+
     def do_POST(self):
         length = int(self.headers.get("Content-Length", 0))
         code = self.rfile.read(length).decode("utf-8") if length else ""
