@@ -116,8 +116,12 @@ Rendering is slow. Minimize render calls and use the lowest quality that answers
   see real-time rendered view, selection highlights, and interactive feedback that
   screenshots and renders may miss. This is especially useful for geometry nodes output,
   volumetrics, and complex material effects.
+- **Temporal effects (animation, audio sync, flickering)** — ask the user to play back
+  the timeline and report what they see. Screenshots and single-frame renders cannot
+  validate timing, sync, or motion. Don't render video just to check — the user's
+  viewport playback is instant and more informative.
 
-Only increase quality once the scene is right. Don't render after every small change — batch adjustments and render once to verify.
+Only increase quality once the scene is right. Don't render after every small change — batch adjustments and render once to verify. When in doubt, ask the user to verify in the viewport rather than burning time on renders.
 
 ## Common patterns
 

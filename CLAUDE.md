@@ -17,6 +17,7 @@ output/                      # Render output (gitignored)
   blender-geometry-nodes/    # Geometry Nodes (procedural geometry, instancing)
   blender-laser/             # Laser beams with raycast reflection
   blender-projector/         # Spotlight projection patterns (grid, dots, radial, circles)
+  blender-audioviz/          # Audio visualization (extraction, patterns, lighting rigs)
 ```
 
 ## Reference code
