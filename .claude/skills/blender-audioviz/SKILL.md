@@ -544,3 +544,9 @@ For laser beams driven by audio, see the `blender-laser` skill. Key wiring point
 
 Wire via drivers on the LaserPivot object and beam materials — see `blender-laser`
 skill for the handler setup pattern.
+
+## Creative Ideas
+
+See `ideas.md` for advanced techniques: floor displacement, particle bursts,
+ribbon trails, beat-synced camera cuts, silhouette mode, reflective floors,
+stage transitions, and more. Each idea notes complexity and which skills it builds on.
