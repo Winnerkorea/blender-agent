@@ -27,9 +27,9 @@ output/                      # Render output (gitignored)
 
 ## Blender version
 
-Target **Blender 5.0+** only. No backwards compatibility needed.
+Target **Blender 5.1+** only. No backwards compatibility needed.
 
-The skills in `.claude/skills/` are the source of truth for Blender 5.0 API usage. Always
+The skills in `.claude/skills/` are the source of truth for Blender 5.1 API usage. Always
 follow the patterns in skills rather than relying on training data, which is mostly pre-5.0.
 When you hit an API error, fix it and update the relevant skill so it stays accurate.
 
@@ -38,9 +38,9 @@ memory directory. All project knowledge belongs in CLAUDE.md and the skill files
 `.claude/skills/`, which ship with the project.
 
 If stuck, search the web. Key docs:
-- Python API: https://docs.blender.org/api/5.0/
-- Release notes (API changes): https://developer.blender.org/docs/release_notes/5.0/python_api/
-- VSE changes: https://developer.blender.org/docs/release_notes/5.0/sequencer/
+- Python API: https://docs.blender.org/api/5.1/
+- Release notes (API changes): https://developer.blender.org/docs/release_notes/5.1/python_api/
+- VSE changes: https://developer.blender.org/docs/release_notes/5.1/sequencer/
 
 ## Skill usability test
 
@@ -75,7 +75,7 @@ skills are accurate, complete, and usable by an agent without prior knowledge.
 - Modify any project files (skills, CLAUDE.md, code) — only send commands to Blender
 - Use knowledge outside the skill files — the test validates the docs, not the agent's training data
 
-## Known Blender 5.0.1 bugs
+## Known Blender 5.1 bugs
 
 - **Strip modifiers crash**: `strip.modifiers.new()` segfaults. Avoid until fixed.
 - **Render can crash**: threading segfault in `libIlmThread`. Use `resolution_percentage = 50` for test renders.

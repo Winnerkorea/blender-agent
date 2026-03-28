@@ -338,7 +338,7 @@ vol_scatter.inputs["Anisotropy"].default_value = 0.3
 # Noise texture → Map Range → Density for variation
 ```
 
-Eevee 5.0 volumetric settings:
+EEVEE volumetric settings:
 ```python
 eevee = bpy.context.scene.eevee
 eevee.use_volumetric_shadows = True
@@ -346,7 +346,7 @@ eevee.volumetric_samples = 128
 eevee.volumetric_tile_size = '4'  # string: '2', '4', '8', '16'
 ```
 
-Note: Blender 5.0 removed `use_bloom`. For glow effects, use compositor glare node.
+Note: `use_bloom` was removed in 5.0. For glow effects, use compositor glare node.
 
 ## Scene setup tips
 

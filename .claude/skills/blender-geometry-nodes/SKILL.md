@@ -5,7 +5,7 @@ description: Create and manipulate Blender Geometry Nodes for procedural geometr
 
 # Blender Geometry Nodes — Procedural Geometry Skill
 
-Python API reference for Blender 5.0+ Geometry Nodes. Send all code via:
+Python API reference for Blender 5.1+ Geometry Nodes. Send all code via:
 ```bash
 curl -s localhost:5656 --data-binary @- <<'PYEOF'
 <python code>
@@ -560,7 +560,7 @@ tree.links.new(transform.inputs["Geometry"], realize.outputs["Geometry"])
 tree.links.new(transform.inputs["Transform"], invert.outputs["Matrix"])
 ```
 
-## Known issues (Blender 5.0.1)
+## Known issues (Blender 5.1)
 
 - **`mod["Socket_N"]` may need `obj.data.update()`** after setting values to refresh the viewport
 - **Socket identifiers renumber** when the tree interface changes — always introspect `tree.interface.items_tree` rather than hardcoding identifiers

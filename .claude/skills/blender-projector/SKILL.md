@@ -21,8 +21,8 @@ PYEOF
 
 ## Core concept
 
-A Cycles spotlight with `use_nodes = True` projects whatever color its Emission node
-outputs. By building procedural patterns from math nodes (sine, modulo, atan2, distance),
+A Cycles spotlight projects whatever color its Emission node outputs (lights always
+use nodes in Blender 5.1+, no `use_nodes` toggle needed). By building procedural patterns from math nodes (sine, modulo, atan2, distance),
 every parameter — spacing, line width, color, count — is natively keyframable.
 
 Volumetric fog (a cube with Volume Principled material) makes the light cone and beams
@@ -138,8 +138,6 @@ import bpy, math
 
 spot = bpy.data.objects["Projector"]
 light = spot.data
-light.use_nodes = True
-
 nodes = light.node_tree.nodes
 links = light.node_tree.links
 

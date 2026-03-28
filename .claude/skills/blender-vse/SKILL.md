@@ -5,7 +5,7 @@ description: Drive Blender's Video Sequence Editor to create and edit video time
 
 # Blender VSE — Video Sequence Editor Skill
 
-Python API reference for Blender 5.0+ Video Sequence Editor. Send all code via:
+Python API reference for Blender 5.1+ Video Sequence Editor. Send all code via:
 ```bash
 curl -s localhost:5656 --data-binary @- <<'PYEOF'
 <python code>
@@ -65,7 +65,7 @@ strip = se.strips.new_movie(name="Clip", filepath="/path/to/video.mp4", channel=
 ### Image strip
 ```python
 strip = se.strips.new_image(name="Photo", filepath="/path/to/image.png", channel=1, frame_start=1)
-strip.frame_final_duration = 48    # hold for 48 frames (2 sec at 24fps)
+strip.right_handle = strip.left_handle + 48   # hold for 48 frames (2 sec at 24fps)
 ```
 
 ### Sound strip
@@ -110,7 +110,7 @@ strip.transform.scale_y = 1.5
 strip.transform.rotation = 0.785    # radians (~45 degrees)
 ```
 
-Note: TRANSFORM is NOT a valid effect type in Blender 5.0. Use `strip.transform` directly.
+Note: TRANSFORM is NOT a valid effect type. Use `strip.transform` directly.
 
 ### Crop
 ```python
@@ -130,12 +130,18 @@ strip.lock = False
 
 ### Timing
 ```python
-strip.frame_start                  # start position on timeline
-strip.frame_final_start            # visual start (after soft trim)
-strip.frame_final_end              # visual end
-strip.frame_final_duration         # visual duration
-strip.frame_offset_start           # soft trim from start
-strip.frame_offset_end             # soft trim from end
+strip.content_start               # start position on timeline (was frame_start)
+strip.left_handle                  # visual start after soft trim (was frame_final_start)
+strip.right_handle                 # visual end (was frame_final_end)
+strip.duration                     # visual duration, READ-ONLY (was frame_final_duration)
+strip.left_handle_offset           # soft trim from start (was frame_offset_start)
+strip.right_handle_offset          # soft trim from end (was frame_offset_end)
+strip.content_duration             # underlying content duration, READ-ONLY (was frame_duration)
+```
+
+**Setting strip duration**: `duration` is read-only. Set it via `right_handle`:
+```python
+strip.right_handle = strip.left_handle + desired_duration
 ```
 
 ## Text strip — full property reference
@@ -224,7 +230,7 @@ se.channels[1].lock = False
 ### Render single frame (PNG)
 ```python
 scene.render.filepath = f"{OUTPUT}/frame.png"
-# If previously set to FFMPEG, must reset media_type before changing format
+# If previously set to FFMPEG, reset media_type before changing format
 scene.render.image_settings.media_type = 'IMAGE'
 scene.render.image_settings.file_format = 'PNG'
 scene.render.resolution_percentage = 100
@@ -235,7 +241,7 @@ bpy.ops.render.render(write_still=True)
 ### Render animation (video)
 ```python
 scene.render.filepath = f"{OUTPUT}/render.mp4"
-# Blender 5.0: MUST set media_type to VIDEO before setting FFMPEG
+# MUST set media_type to VIDEO before setting FFMPEG
 scene.render.image_settings.media_type = 'VIDEO'
 scene.render.image_settings.file_format = 'FFMPEG'
 scene.render.ffmpeg.format = 'MPEG4'
@@ -299,16 +305,16 @@ for i, (start_sec, end_sec, text) in enumerate(subs):
 
 The Video Editing workspace can be loaded from Blender's built-in template:
 ```python
-template_path = "/Applications/Blender.app/Contents/Resources/5.0/scripts/startup/bl_app_templates_system/Video_Editing/startup.blend"
+template_path = "/Applications/Blender.app/Contents/Resources/5.1/scripts/startup/bl_app_templates_system/Video_Editing/startup.blend"
 bpy.ops.workspace.append_activate(idname="Video Editing", filepath=template_path)
 bpy.context.window.workspace = bpy.data.workspaces["Video Editing"]
 ```
 
 **Important**: The template's sequencer areas don't auto-link to the current scene's strips.
-In Blender 5.0, each workspace has its own `sequencer_scene` (separate from `window.scene`).
+Each workspace has its own `sequencer_scene` (separate from `window.scene`).
 Must be set with a timer delay after the workspace switch:
 ```python
-template_path = "/Applications/Blender.app/Contents/Resources/5.0/scripts/startup/bl_app_templates_system/Video_Editing/startup.blend"
+template_path = "/Applications/Blender.app/Contents/Resources/5.1/scripts/startup/bl_app_templates_system/Video_Editing/startup.blend"
 bpy.ops.workspace.append_activate(idname="Video Editing", filepath=template_path)
 bpy.context.window.workspace = bpy.data.workspaces["Video Editing"]
 
@@ -320,7 +326,7 @@ def fix_scene():
 bpy.app.timers.register(fix_scene, first_interval=0.3)
 ```
 
-## Known issues (Blender 5.0.1)
+## Known issues (Blender 5.1)
 
 - **Strip modifiers crash**: `strip.modifiers.new()` segfaults. Avoid until patched.
 - **TRANSFORM effect type removed**: use `strip.transform` property instead.

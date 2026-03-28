@@ -5,7 +5,7 @@ description: Manipulate Blender 3D scenes including creating objects, materials,
 
 # Blender 3D — Scene Manipulation Skill
 
-Python API reference for Blender 5.0+ 3D scenes. Send all code via:
+Python API reference for Blender 5.1+ 3D scenes. Send all code via:
 ```bash
 curl -s localhost:5656 --data-binary @- <<'PYEOF'
 <python code>
@@ -153,7 +153,7 @@ for fcurve in action.fcurves:
 ```python
 scene = bpy.context.scene
 scene.render.filepath = f"{OUTPUT}/render.png"
-# If previously set to FFMPEG, must reset media_type before changing format
+# If previously set to FFMPEG, reset media_type before changing format
 scene.render.image_settings.media_type = 'IMAGE'
 scene.render.image_settings.file_format = 'PNG'
 scene.render.resolution_percentage = 100
@@ -172,7 +172,7 @@ bpy.ops.render.render(animation=True)
 ### Render animation (H.264 video)
 ```python
 scene.render.filepath = f"{OUTPUT}/render.mp4"
-# Blender 5.0: MUST set media_type to VIDEO before setting FFMPEG
+# MUST set media_type to VIDEO before setting FFMPEG
 scene.render.image_settings.media_type = 'VIDEO'
 scene.render.image_settings.file_format = 'FFMPEG'
 scene.render.ffmpeg.format = 'MPEG4'
@@ -366,8 +366,8 @@ Spot lights create visible beams through volumetric fog (see Volumetric section 
 
 ## Compositor (bloom / post-processing)
 
-In Blender 5.0, bloom is NOT an EEVEE setting (`use_bloom` was removed).
-The compositor API changed completely:
+Bloom is NOT an EEVEE setting (`use_bloom` was removed in 5.0).
+The compositor API changed in 5.0:
 - `scene.node_tree` removed — use `scene.compositing_node_group`
 - `CompositorNodeComposite` removed — use `NodeGroupOutput` + tree interface socket
 - `scene.use_nodes` deprecated (always True) — removed in 6.0
