@@ -17,14 +17,29 @@ cameras, and rendering. See `blender-laser` for laser beam integration.
 
 ## Architecture
 
-Two control objects anchor the system:
+Three control objects anchor the system:
 
-- **AudioGuide** — Empty with audio curves baked as custom properties (`kick`, `bass`,
-  `mid`, `snare`, `hihat`, `master_energy`). Reference only — not auto-wired to anything.
-  User views curves in Graph Editor alongside audio in the Sequencer.
+- **AudioGuide** — Empty with kick drum curve baked as custom property. Reference only —
+  user views in Graph Editor alongside audio in Sequencer to place bar markers.
+- **BarRamp** — Empty whose X location is a sawtooth 0→1 per bar (keyframed at bar
+  markers). All beat-synced effects derive from this single ramp via sine math.
+  Self-contained per bar — no drift accumulation if a bar marker is slightly off.
 - **PatternOrigin** — Empty used as the texture coordinate object for all pattern materials.
   Move/rotate it to move/rotate all patterns coherently. Per-surface offset via each
   surface mesh's own object origin.
+
+**Pulse light control**: Each light gets a control empty (`LightName_ctrl`) where
+transform channels store keyframeable parameters:
+
+| Channel | Parameter | Description |
+|---------|-----------|-------------|
+| X location | `mult` | BPM multiplier: `N*π` gives `N/2` pulses/bar. 4=quarter, 8=8th, 16=16th |
+| Y location | `sharpness` | Sine exponent: 2=soft, 6=punchy, 8-12=hard strobe |
+| Z location | `intensity` | Peak emission (watts for lights, strength for materials) |
+
+Keyframe X with **CONSTANT** interpolation at bar boundaries to change rate for drops.
+All parameters use TRANSFORMS drivers (not custom properties — those don't evaluate
+reliably in Blender drivers).
 
 **Standard property interface** on each surface object wearing a pattern material:
 
@@ -36,9 +51,6 @@ Two control objects anchor the system:
 | `flash` | float | 0.0 | Flash intensity (0-1, multiplied into emission) |
 
 Each pattern type adds its own extras (e.g. `line_thickness`, `beam_count`).
-
-**Driver chain**: AudioGuide props → (user keyframes or copies values) → surface object
-custom props → drivers → material Value nodes.
 
 ## Audio Extraction
 
@@ -68,86 +80,61 @@ subprocess inside Blender can hang. Use `OUTPUT` for the output directory:
 ffmpeg -y -i /path/to/song.ogg -ar 44100 -ac 1 -sample_fmt s16 output/song.wav
 ```
 
-### Step 2: Extract frequency bands
+### Step 2: Extract kick drum curve
 
-Run this **inside Blender** (via HTTP). Uses `wave` + `numpy` (bundled).
+Extract only the kick band (40-100Hz) — this is the primary reference for placing
+bar markers. Other bands can be added later if needed, but kick alone is sufficient
+for beat detection. Run **inside Blender** (via HTTP). Uses `wave` + `numpy` (bundled).
 
 ```python
 import bpy, wave, numpy as np
 
-def extract_bands(wav_path, fps, frame_count):
-    """Extract frequency band amplitudes per frame using FFT."""
+def extract_kick(wav_path, fps, frame_count):
+    """Extract kick drum (40-100Hz) amplitude per frame using FFT."""
     wf = wave.open(wav_path, 'rb')
     sr = wf.getframerate()
     raw = wf.readframes(wf.getnframes())
     wf.close()
     audio = np.frombuffer(raw, dtype=np.int16).astype(np.float64) / 32768.0
-    spf = sr // fps  # samples per frame
+    spf = sr // fps
     window_size = 2048
 
-    bands = {
-        "kick":  (40, 100),     # narrow: pure kick thump, excludes bass synth
-        "bass":  (100, 400),
-        "mid":   (400, 2000),
-        "snare": (2000, 6000),
-        "hihat": (6000, 16000),
-    }
-
-    # Bands that need transient sharpening (power curve exponent).
-    # Higher = more peaky. Kick especially needs this to avoid muddy sustained energy.
-    sharpness = {
-        "kick": 2.0,   # square — sharpens transients while staying visible
-        "snare": 1.5,  # gentle — snare has some sustain
-    }
-
-    results = {name: [] for name in bands}
-    results["master_energy"] = []
-
+    kick_lo, kick_hi = 40, 100
+    values = []
     for i in range(frame_count):
         start = i * spf
         chunk = audio[start:start + window_size]
         if len(chunk) < window_size:
-            for name in results:
-                results[name].append(0.0)
+            values.append(0.0)
             continue
-
         fft = np.fft.rfft(chunk)
         freqs = np.fft.rfftfreq(window_size, 1.0 / sr)
         magnitudes = np.abs(fft)
+        mask = (freqs >= kick_lo) & (freqs <= kick_hi)
+        values.append(float(np.mean(magnitudes[mask])) if mask.any() else 0.0)
 
-        energy_sum = 0.0
-        for name, (lo, hi) in bands.items():
-            mask = (freqs >= lo) & (freqs <= hi)
-            val = float(np.mean(magnitudes[mask])) if mask.any() else 0.0
-            results[name].append(val)
-            energy_sum += val
+    # Normalize to 0-1, then sharpen transients (power 2.0)
+    mx = max(values) if values else 1.0
+    if mx > 0:
+        values = [v / mx for v in values]
+    values = [v ** 2.0 for v in values]
+    mx2 = max(values) if values else 1.0
+    if mx2 > 0:
+        values = [v / mx2 for v in values]
 
-        results["master_energy"].append(energy_sum / len(bands))
-
-    # Normalize each band to 0-1, then apply sharpness
-    for name in results:
-        vals = results[name]
-        mx = max(vals) if vals else 1.0
-        if mx > 0:
-            results[name] = [v / mx for v in vals]
-        # Apply power curve for transient sharpening
-        exp = sharpness.get(name)
-        if exp:
-            results[name] = [v ** exp for v in results[name]]
-            mx2 = max(results[name]) if results[name] else 1.0
-            if mx2 > 0:
-                results[name] = [v / mx2 for v in results[name]]
-
-    return results
+    return values
 ```
 
 ### Step 3: Bake to AudioGuide object
 
+AudioGuide is a reference-only empty — the user views the kick curve in the Graph
+Editor to identify bar boundaries and place markers.
+
 ```python
 import bpy
 
-def bake_audio_guide(bands, frame_start=1):
-    """Create AudioGuide empty and bake band curves as keyframes."""
+def bake_kick_to_guide(values, frame_start=1):
+    """Bake kick curve as keyframes on AudioGuide empty."""
     guide = bpy.data.objects.get("AudioGuide")
     if not guide:
         guide = bpy.data.objects.new("AudioGuide", None)
@@ -155,18 +142,35 @@ def bake_audio_guide(bands, frame_start=1):
         guide.empty_display_type = 'ARROWS'
         guide.empty_display_size = 0.3
 
-    for name, values in bands.items():
-        for i, val in enumerate(values):
-            guide[name] = val
-            guide.keyframe_insert(data_path=f'["{name}"]', frame=frame_start + i)
+    for i, val in enumerate(values):
+        guide["kick"] = val
+        guide.keyframe_insert(data_path='["kick"]', frame=frame_start + i)
 
-    # Set LINEAR interpolation for snappy response
     if guide.animation_data and guide.animation_data.action:
         for fc in guide.animation_data.action.fcurves:
             for kp in fc.keyframe_points:
                 kp.interpolation = 'LINEAR'
 
     return guide
+```
+
+Optionally create a binary gate curve for clearer visual reference:
+
+```python
+def bake_kick_gate(guide, threshold=0.25, frame_start=1):
+    """Binary 0/1 curve: 1 when kick >= threshold, else 0. CONSTANT interp."""
+    action = guide.animation_data.action
+    kick_fc = next(fc for fc in action.fcurves if fc.data_path == '["kick"]')
+    kick_values = [(kp.co[0], kp.co[1]) for kp in kick_fc.keyframe_points]
+
+    guide["kick_gate"] = 0.0
+    for frame, val in kick_values:
+        guide["kick_gate"] = 1.0 if val >= threshold else 0.0
+        guide.keyframe_insert(data_path='["kick_gate"]', frame=frame)
+
+    gate_fc = next(fc for fc in action.fcurves if fc.data_path == '["kick_gate"]')
+    for kp in gate_fc.keyframe_points:
+        kp.interpolation = 'CONSTANT'
 ```
 
 ### Step 4: Load audio into sequencer
@@ -197,55 +201,146 @@ validating sync and feel. Ask them:
 Only render a frame or short clip when the user confirms the curves feel right and
 wants to check the visual output.
 
-### Complete extraction workflow
+### Complete setup workflow
 
-```python
-# Outside Blender (shell):
-ffmpeg -y -i /path/to/song.ogg -ar 44100 -ac 1 -sample_fmt s16 output/song.wav
-
-# Inside Blender (via HTTP):
-wav_path = f"{OUTPUT}/song.wav"
-fps = bpy.context.scene.render.fps
-frame_count = bpy.context.scene.frame_end - bpy.context.scene.frame_start + 1
-
-bands = extract_bands(wav_path, fps, frame_count)
-guide = bake_audio_guide(bands, frame_start=bpy.context.scene.frame_start)
-
-# Load audio for playback
-if not bpy.context.scene.sequence_editor:
-    bpy.context.scene.sequence_editor_create()
-se = bpy.context.scene.sequence_editor
-se.strips.new_sound(name="Music", filepath=wav_path, channel=1,
-                    frame_start=bpy.context.scene.frame_start)
+```bash
+# 1. Outside Blender (shell) — convert audio to WAV:
+ffmpeg -y -i /path/to/song.ogg -ar 44100 -ac 1 -sample_fmt s16 /project/song.wav
 ```
 
-### BPM ramp
+```python
+# 2. Inside Blender (via HTTP) — set up scene, extract kick, load audio:
+import bpy
+scene = bpy.context.scene
+scene.render.fps = 60
+scene.frame_end = int(duration_seconds * 60)  # calculate from audio duration
 
-The BPM ramp is a linear time signal that, when multiplied by a factor, gives beat-synced
-oscillations at different subdivisions. **The user draws this ramp manually** because tempo
-may change throughout the song.
+wav_path = "/project/song.wav"
+values = extract_kick(wav_path, scene.render.fps,
+                      scene.frame_end - scene.frame_start + 1)
+guide = bake_kick_to_guide(values, frame_start=scene.frame_start)
 
-**Agent guidance for the user:**
-- Create a custom property `bpm_ramp` on AudioGuide (or a separate control object)
-- Keyframe it as a linear ramp: value = `beat_number` at each beat
-- For a constant-tempo track at 128 BPM: slope = 128/60 = 2.133 beats per second
-- In driver expressions, use `bpm_ramp * N` for N-beat subdivision:
-  - `sin(bpm_ramp * 2 * pi)` = 1-beat pulse
-  - `sin(bpm_ramp * 8 * 2 * pi)` = 8th-note pulse
-  - `sin(bpm_ramp * 16 * 2 * pi)` = 16th-note flash
+# Load audio into sequencer for playback sync
+if not scene.sequence_editor:
+    scene.sequence_editor_create()
+scene.sequence_editor.strips.new_sound(
+    name="Music", filepath=wav_path, channel=1, frame_start=scene.frame_start)
+```
+
+```
+3. User places bar markers (b00, b01, ...) using kick curve as guide.
+   LLM analyzes spacing, interpolates missing bars, extrapolates 1-2 beyond.
+
+4. LLM creates BarRamp sawtooth from markers:
+   bar_frames = [m.frame for m in sorted(scene.timeline_markers, key=lambda m: m.frame)]
+   ramp = create_bar_ramp(bar_frames)
+
+5. LLM creates pulse lights with control empties.
+   User keyframes mult/sharpness/intensity on control empties for drops.
+```
+
+### Bar markers and BPM analysis
+
+After baking kick curves, the user places timeline markers at bar boundaries. The LLM
+can analyze marker spacing to estimate BPM and verify even spacing:
+
+```python
+markers = sorted(bpy.context.scene.timeline_markers, key=lambda m: m.frame)
+fps = bpy.context.scene.render.fps
+for i in range(1, len(markers)):
+    df = markers[i].frame - markers[i-1].frame
+    bpm = 60.0 / (df / fps) * 4  # assuming 4 beats per bar
+    print(f"{markers[i].name}: {df} frames, ~{bpm:.1f} BPM")
+```
+
+If the user skips a bar (e.g. no kick drum in that section), interpolate by averaging
+the adjacent bars. Also extrapolate 1-2 bars before the first and after the last marker.
+
+### BarRamp — sawtooth ramp
+
+A per-bar sawtooth ramp (0→1) on the **BarRamp** empty's X location. All beat-synced
+effects derive from this single ramp. Self-contained per bar — no drift accumulation.
+
+**Why X location instead of a custom property**: Custom properties do not evaluate
+reliably in Blender drivers (the value gets stuck at the last-set value). Object
+transforms always interpolate correctly. Use TRANSFORMS driver variables to read them.
+
+```python
+import bpy
+
+def create_bar_ramp(bar_frames):
+    """Create BarRamp empty with sawtooth 0→1 per bar on X location."""
+    scene = bpy.context.scene
+    ramp = bpy.data.objects.get("BarRamp")
+    if not ramp:
+        ramp = bpy.data.objects.new("BarRamp", None)
+        scene.collection.objects.link(ramp)
+        ramp.empty_display_type = 'SINGLE_ARROW'
+        ramp.empty_display_size = 0.3
+
+    if ramp.animation_data:
+        ramp.animation_data_clear()
+
+    for i in range(len(bar_frames)):
+        start = bar_frames[i]
+        end = bar_frames[i + 1] if i + 1 < len(bar_frames) \
+              else start + (bar_frames[-1] - bar_frames[-2])
+
+        # One frame before bar: ramp reaches 1.0 (end of previous ramp)
+        if start > scene.frame_start:
+            ramp.location.x = 1.0
+            ramp.keyframe_insert(data_path="location", index=0, frame=start - 1)
+
+        # Bar start: instant drop to 0
+        ramp.location.x = 0.0
+        ramp.keyframe_insert(data_path="location", index=0, frame=start)
+
+    # End of last bar
+    last_len = bar_frames[-1] - bar_frames[-2]
+    end_frame = bar_frames[-1] + last_len
+    ramp.location.x = 1.0
+    ramp.keyframe_insert(data_path="location", index=0, frame=min(end_frame, scene.frame_end))
+
+    # LINEAR interpolation on all keyframes
+    fc = ramp.animation_data.action.fcurves[0]
+    for kp in fc.keyframe_points:
+        kp.interpolation = 'LINEAR'
+
+    return ramp
+```
+
+### Pulse math
+
+The core pulse formula used in all drivers:
+
+```
+max(0, abs(sin(ramp * mult * π)) ** sharpness * intensity - threshold)
+```
+
+- `ramp` = BarRamp X location (0→1 per bar)
+- `mult` = N gives N/2 pulses per bar (4=quarter, 8=8th, 16=16th, 32=32nd)
+- `sharpness` = exponent (2=soft sine, 6=punchy, 8+=hard strobe)
+- `intensity` = peak output value
+- `threshold` = small value (0.3) to cut sine tail to hard zero
+
+The sine evaluates at full precision — not quantized to frames. This means
+32nd notes at 60fps still produce clean spikes.
 
 ## Control Object Setup
 
 ```python
 import bpy
 
-# AudioGuide (audio reference curves)
+# AudioGuide — reference curves only (kick drum for bar marker placement)
 guide = bpy.data.objects.new("AudioGuide", None)
 bpy.context.scene.collection.objects.link(guide)
 guide.empty_display_type = 'ARROWS'
 guide.empty_display_size = 0.3
 
-# PatternOrigin (shared texture coordinate source)
+# BarRamp — sawtooth 0→1 per bar (created after user places bar markers)
+# See create_bar_ramp() in "BarRamp — sawtooth ramp" section
+
+# PatternOrigin — shared texture coordinate source for pattern materials
 origin = bpy.data.objects.new("PatternOrigin", None)
 bpy.context.scene.collection.objects.link(origin)
 origin.empty_display_type = 'PLAIN_AXES'
@@ -279,11 +374,18 @@ Six pattern types available. All share:
 | **Grid** | Brick Texture | `line_thickness`, `tile_size`, `color_mix` |
 | **Checkerboard** | Modulo + threshold | `cell_size`, `contrast` |
 | **Hexagonal** | Hex offset rows + distance | `cell_size`, `border_width` |
+| **Hex Beat-Driven** | Hex + irrational cell hash + BarRamp | Selective cell lighting, symmetric, snaps on beat |
 | **Radial** | ATAN2 + sine + threshold | `beam_count`, `beam_width` |
 | **Concentric** | Distance + sine + threshold | `ring_count`, `ring_width` |
 | **Polar** | Normal vector + radial math | `rings`, `spokes` |
+| **Circle Polar** | Rings + spokes + frame handler | Independent ring/spoke flash, pattern, grid controls |
 
 See `pattern-reference.md` for complete Python code for each pattern.
+
+The **Circle Polar** pattern is the recommended floor pattern for audio-viz scenes.
+It uses a frame handler (not drivers) for readable custom properties, a dual-BSDF
+material (fill + border, independently customizable), and separates flash rate from
+pattern change rate for both rings and spokes independently.
 
 ### Shared material preamble
 
@@ -373,121 +475,163 @@ links.new(mix.inputs["Factor"], pattern_mask.outputs[0])
 links.new(hsv.inputs["Color"], mix.outputs["Result"])
 ```
 
-## Wiring Drivers
+## Pulse Light System
 
-### AudioGuide property → surface custom property
+### Creating a pulse light
 
-Copy values manually (user keyframes) or wire a driver for live preview:
+Each light gets a control empty whose transform channels store keyframeable parameters.
+All use TRANSFORMS driver variables (never custom properties — they don't evaluate
+reliably in Blender drivers).
 
 ```python
-obj = bpy.data.objects["Floor"]
-guide = bpy.data.objects["AudioGuide"]
+import bpy
 
-# Drive floor brightness from kick
-drv = obj.driver_add('["brightness"]')
-var = drv.driver.variables.new()
-var.name = "kick"
-var.targets[0].id = guide
-var.targets[0].data_path = '["kick"]'
-drv.driver.expression = "kick * 3.0"  # scale to taste
+def create_pulse_light(name, location, aim_target, ramp_obj,
+                       color=(1,1,1), mult=4, sharpness=6, intensity=800):
+    """Create a spot light + control empty driven by BarRamp.
+
+    Control empty channels (keyframeable):
+      X = mult (BPM multiplier: 4=quarter, 8=8th, 16=16th, 32=32nd)
+      Y = sharpness (exponent: 2=soft, 6=punchy, 8+=hard strobe)
+      Z = intensity (peak emission watts)
+    """
+    # Spot light
+    bpy.ops.object.light_add(type='SPOT', location=location)
+    spot = bpy.context.active_object
+    spot.name = name
+    spot.data.spot_size = 0.8
+    spot.data.spot_blend = 0.3
+    spot.data.color = color
+    spot.data.shadow_soft_size = 0.2
+
+    track = spot.constraints.new('TRACK_TO')
+    track.target = aim_target
+    track.track_axis = 'TRACK_NEGATIVE_Z'
+    track.up_axis = 'UP_Y'
+
+    # Control empty — transform channels ARE the parameters
+    ctrl = bpy.data.objects.new(f"{name}_ctrl", None)
+    bpy.context.scene.collection.objects.link(ctrl)
+    ctrl.empty_display_type = 'PLAIN_AXES'
+    ctrl.empty_display_size = 0.3
+    ctrl.location = (mult, sharpness, intensity)
+    ctrl.hide_render = True
+
+    # Driver: energy = pulse(ramp, mult, sharpness, intensity)
+    drv = spot.data.driver_add("energy")
+
+    var_r = drv.driver.variables.new()
+    var_r.name = "r"
+    var_r.type = 'TRANSFORMS'
+    var_r.targets[0].id = ramp_obj
+    var_r.targets[0].transform_type = 'LOC_X'
+    var_r.targets[0].transform_space = 'WORLD_SPACE'
+
+    var_m = drv.driver.variables.new()
+    var_m.name = "m"
+    var_m.type = 'TRANSFORMS'
+    var_m.targets[0].id = ctrl
+    var_m.targets[0].transform_type = 'LOC_X'
+    var_m.targets[0].transform_space = 'WORLD_SPACE'
+
+    var_s = drv.driver.variables.new()
+    var_s.name = "s"
+    var_s.type = 'TRANSFORMS'
+    var_s.targets[0].id = ctrl
+    var_s.targets[0].transform_type = 'LOC_Y'
+    var_s.targets[0].transform_space = 'WORLD_SPACE'
+
+    var_i = drv.driver.variables.new()
+    var_i.name = "i"
+    var_i.type = 'TRANSFORMS'
+    var_i.targets[0].id = ctrl
+    var_i.targets[0].transform_type = 'LOC_Z'
+    var_i.targets[0].transform_space = 'WORLD_SPACE'
+
+    drv.driver.expression = "max(0, abs(sin(r * m * 3.14159265)) ** s * i - 0.3)"
+
+    return spot, ctrl
 ```
 
-### Surface property → material node
+### Same pattern for emissive meshes
+
+For cubes, planes, or any mesh with emission material, drive emission strength
+instead of light energy. The driver expression is identical:
 
 ```python
 mat = obj.data.materials[0]
-nodes = mat.node_tree.nodes
+bsdf = mat.node_tree.nodes["Principled BSDF"]
+# Clear existing material drivers
+if mat.node_tree.animation_data:
+    mat.node_tree.animation_data_clear()
 
-# Drive brightness Value node from object property
-bright_node = next(n for n in nodes if n.label == "brightness")
-drv = bright_node.outputs[0].driver_add("default_value")
-var = drv.driver.variables.new()
-var.name = "val"
-var.targets[0].id = obj
-var.targets[0].data_path = '["brightness"]'
-drv.driver.expression = "val"
-
-# Drive HSV hue from object property
-hsv_node = next(n for n in nodes if n.label == "color_control")
-drv = hsv_node.inputs["Hue"].driver_add("default_value")
-var = drv.driver.variables.new()
-var.name = "val"
-var.targets[0].id = obj
-var.targets[0].data_path = '["hue"]'
-drv.driver.expression = "val"
+drv = bsdf.inputs["Emission Strength"].driver_add("default_value")
+# ... add r, m, s, i variables same as above ...
+drv.driver.expression = "max(0, abs(sin(r * m * 3.14159265)) ** s * i - 0.3)"
 ```
 
-### Speed (pattern scrolling via frame)
+### Keyframing drops
+
+Change BPM multiplier at bar boundaries with CONSTANT interpolation for instant
+rate switches. Example: verse at mult=8, drop at mult=32:
 
 ```python
-mapping = next(n for n in nodes if n.label == "pattern_mapping")
+ctrl = bpy.data.objects["PulseSpot_1_ctrl"]
+markers = {m.name: m.frame for m in bpy.context.scene.timeline_markers}
 
-# Drive Mapping X location from speed * frame
-drv = mapping.inputs["Location"].driver_add("default_value", 0)  # index 0 = X
-var = drv.driver.variables.new()
-var.name = "spd"
-var.targets[0].id = obj
-var.targets[0].data_path = '["speed"]'
-drv.driver.expression = "spd * frame / 60.0"  # adjust 60.0 to scene fps
+# Verse: 8th notes
+ctrl.location.x = 8
+ctrl.keyframe_insert(data_path="location", index=0, frame=markers["b00"])
+
+# Drop: 32nd notes + brighter
+ctrl.location.x = 32
+ctrl.keyframe_insert(data_path="location", index=0, frame=markers["b04"])
+ctrl.location.z = 1500  # intensity bump
+ctrl.keyframe_insert(data_path="location", index=2, frame=markers["b04"])
+
+# Back to verse
+ctrl.location.x = 8
+ctrl.keyframe_insert(data_path="location", index=0, frame=markers["b06"])
+ctrl.location.z = 600
+ctrl.keyframe_insert(data_path="location", index=2, frame=markers["b06"])
+
+# CONSTANT interpolation — snap, don't blend
+for fc in ctrl.animation_data.action.fcurves:
+    for kp in fc.keyframe_points:
+        kp.interpolation = 'CONSTANT'
 ```
 
-### Flash (emission pulse)
+### Mult reference
 
-```python
-# Flash multiplies into brightness: brightness * (1 + flash * sin(time))
-bright_node = next(n for n in nodes if n.label == "brightness")
-drv = bright_node.outputs[0].driver_add("default_value")
-# Two variables: base brightness + flash
-var_b = drv.driver.variables.new()
-var_b.name = "bright"
-var_b.targets[0].id = obj
-var_b.targets[0].data_path = '["brightness"]'
-var_f = drv.driver.variables.new()
-var_f.name = "flash"
-var_f.targets[0].id = obj
-var_f.targets[0].data_path = '["flash"]'
-drv.driver.expression = "bright * (1.0 + flash * sin(frame * 0.5))"
-```
+| mult value | Pulses per bar | Musical term |
+|------------|---------------|--------------|
+| 4 | 2 | half notes |
+| 8 | 4 | quarter notes |
+| 16 | 8 | 8th notes |
+| 32 | 16 | 16th notes |
+| 64 | 32 | 32nd notes |
 
-### Wiring to character materials (any material)
+### Wiring to character materials
 
-To make any existing material audio-reactive, inject a driver on its emission strength:
+To make any existing material pulse-reactive, drive its emission strength from BarRamp:
 
 ```python
 mat = bpy.data.materials["clothes01"]
 bsdf = mat.node_tree.nodes["Principled BSDF"]
-guide = bpy.data.objects["AudioGuide"]
+ramp = bpy.data.objects["BarRamp"]
 
 drv = bsdf.inputs["Emission Strength"].driver_add("default_value")
 var = drv.driver.variables.new()
-var.name = "energy"
-var.targets[0].id = guide
-var.targets[0].data_path = '["master_energy"]'
-drv.driver.expression = "energy * 2.0"
+var.name = "r"
+var.type = 'TRANSFORMS'
+var.targets[0].id = ramp
+var.targets[0].transform_type = 'LOC_X'
+var.targets[0].transform_space = 'WORLD_SPACE'
+drv.driver.expression = "max(0, abs(sin(r * 8 * 3.14159265)) ** 6 * 3 - 0.1)"
 ```
 
-For bulk application to all materials on a character:
-
-```python
-armature = bpy.data.objects["Armature"]
-guide = bpy.data.objects["AudioGuide"]
-
-for child in armature.children:
-    if child.type != 'MESH':
-        continue
-    for mat in child.data.materials:
-        if not mat or not mat.use_nodes:
-            continue
-        bsdf = mat.node_tree.nodes.get("Principled BSDF")
-        if not bsdf:
-            continue
-        drv = bsdf.inputs["Emission Strength"].driver_add("default_value")
-        var = drv.driver.variables.new()
-        var.name = "e"
-        var.targets[0].id = guide
-        var.targets[0].data_path = '["master_energy"]'
-        drv.driver.expression = "e * 2.0"
-```
+For bulk application to all materials on a character armature, loop over child
+meshes and apply the same driver pattern.
 
 ### Shadow suppression (optional)
 
@@ -506,9 +650,103 @@ links.new(mix_shadow.inputs[2], transparent.outputs["BSDF"])  # transparent for 
 links.new(output.inputs["Surface"], mix_shadow.outputs["Shader"])
 ```
 
+## Frame Handler Pattern (preferred for complex surfaces)
+
+For surfaces with many parameters (like the polar floor), use a **frame handler**
+instead of drivers. The handler reads custom properties via Python (which works
+correctly) and writes to labeled Value nodes in the shader.
+
+### Why frame handlers over drivers
+
+- **Custom properties work**: Python reads them fine; only Blender's driver evaluator
+  has the bug where values get stuck.
+- **Readable names**: `pulse_ring_flash` instead of overloading location/rotation/scale.
+- **Centralized logic**: All math in one Python function, easy to modify globally.
+- **No channel limits**: Drivers are limited to 9 transform channels per control empty.
+
+### Persistent handler script
+
+Save the handler as a **text block** in the .blend file with `use_module = True` so
+it auto-runs on file load. Blender will prompt "Run Python scripts" — user must accept.
+
+```python
+# Create text block
+txt = bpy.data.texts.get("my_handler.py")
+if txt:
+    bpy.data.texts.remove(txt)
+txt = bpy.data.texts.new("my_handler.py")
+txt.write(handler_source_code)
+txt.use_module = True  # auto-run on file load
+```
+
+### Handler template
+
+```python
+import bpy
+from math import sin, pi, floor as mfloor, fabs
+
+handler_name = "my_handler"
+
+def my_update(scene, depsgraph=None):
+    ctrl = bpy.data.objects.get("MyCtrl")
+    ramp = bpy.data.objects.get("BarRamp")
+    mat = bpy.data.materials.get("MyMat")
+    if not ctrl or not ramp or not mat:
+        return
+
+    nodes = mat.node_tree.nodes
+    r = ramp.matrix_world.translation.x  # BarRamp X (always correct)
+
+    # Read custom properties (Python reads these fine)
+    flash = ctrl.get("pulse_flash", 8.0)
+    sharpness = ctrl.get("pulse_sharpness", 6.0)
+
+    # Compute
+    flash_val = fabs(sin(r * flash * pi)) ** sharpness
+
+    # Write to labeled Value nodes
+    for nd in nodes:
+        if nd.label == "my_value":
+            nd.outputs[0].default_value = flash_val
+
+my_update._name = handler_name
+
+def register():
+    for h in list(bpy.app.handlers.frame_change_post):
+        if hasattr(h, "_name") and h._name == handler_name:
+            bpy.app.handlers.frame_change_post.remove(h)
+    bpy.app.handlers.frame_change_post.append(my_update)
+
+register()
+```
+
+**Do NOT call `depsgraph.update()`** in frame handlers — causes crashes (GIL
+contention). Just set values directly; Blender picks them up on the next draw.
+
+### When to use drivers vs frame handlers
+
+| Use case | Approach |
+|----------|----------|
+| Simple lights (1-3 params) | TRANSFORMS drivers on control empties |
+| Complex surfaces (5+ params) | Frame handler with custom properties |
+| Character material wiring | TRANSFORMS driver (one expression per material) |
+| Anything needing readable names | Frame handler |
+
+## Known Driver Pitfalls
+
+- **Custom properties don't evaluate in drivers**: Values get stuck at the last
+  Python-set value. Always use TRANSFORMS variables (object location/rotation/scale)
+  for driver inputs. Store parameters as transform channels on control empties.
+- **SINGLE_PROP driver variables**: Same issue as custom properties. Avoid for
+  anything that needs to interpolate between keyframes.
+- **Workaround**: Use frame handlers instead — Python reads custom properties
+  correctly and writes to Value nodes in the shader.
+
 ## Lighting Rigs
 
 Three presets with a shared interface. See `lighting-rigs.md` for complete setup code.
+Each rig's lights can be wired to the pulse system via `create_pulse_light()` or by
+adding the TRANSFORMS driver pattern to existing lights.
 
 | Preset | Description | Best for |
 |--------|-------------|----------|
