@@ -260,6 +260,7 @@ the adjacent bars. Also extrapolate 1-2 bars before the first and after the last
 
 A per-bar sawtooth ramp (0→1) on the **BarRamp** empty's X location. All beat-synced
 effects derive from this single ramp. Self-contained per bar — no drift accumulation.
+Holds 0 during silence (before first bar and after last bar).
 
 **Why X location instead of a custom property**: Custom properties do not evaluate
 reliably in Blender drivers (the value gets stuck at the last-set value). Object
@@ -326,6 +327,13 @@ max(0, abs(sin(ramp * mult * π)) ** sharpness * intensity - threshold)
 The sine evaluates at full precision — not quantized to frames. This means
 32nd notes at 60fps still produce clean spikes.
 
+### Pulse phase (BubbleDome system)
+
+BubbleDome uses cycle-relative phase: `abs(sin((t * rate + phase) * π)) ^ sharpness`.
+Phase 0.5 = always opposite regardless of rate. This avoids the trap where beat-relative
+phase cancels at certain rates (e.g. phase=0.5 beats with rate=4 adds 2π = no shift).
+Use this for alternating ring/spoke pulses.
+
 ## Control Object Setup
 
 ```python
@@ -379,16 +387,18 @@ Six pattern types available. All share:
 | **Concentric** | Distance + sine + threshold | `ring_count`, `ring_width` |
 | **Polar** | Normal vector + radial math | `rings`, `spokes` |
 | **Circle Polar** | Rings + spokes + frame handler | Independent ring/spoke flash, pattern, grid controls |
-| **HoloBubble** | Geometry-agnostic axis system, emission + transparent | Per-surface x/y props, wave, group strobe, snap, reverse |
+| **BubbleDome** | Split-mesh hemisphere, binary patterns, emission + transparent | See below |
 
 See `pattern-reference.md` for complete Python code for each pattern.
 
-The **HoloBubble** pattern is a geometry-agnostic transparent emission system. Each
-surface object owns its own `x_*`/`y_*` properties (count, width, pulse, wave, group
-strobe, snap, pattern mode). A single frame handler processes all registered surfaces.
-Supports negative rates for reverse direction and per-axis snap (0=smooth, 1=instant).
-See `holobubble-reference.md` for architecture, property reference, and how to add
-new surfaces.
+The **BubbleDome** pattern uses split meshes (SpokeDome + RingDome) with a tiny normal
+offset (1.003x scale on rings) so each axis has fully independent pulse, color, and
+animation. Binary integer patterns control both gate (which lines on/off) and span
+(which cells along each line on/off) using the same bit-extraction math. Shape keys
+morph between flat disc, hemisphere, and open cylinder. Polar naming: `ring_*` (latitude),
+`spoke_*` (longitude). 16 properties per mesh, frame handler processes all registered
+surfaces. See `holobubble-reference.md` for full architecture, property reference,
+binary pattern tables, and waveform types.
 
 ### Shared material preamble
 
