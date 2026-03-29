@@ -203,4 +203,6 @@ To duplicate:
   a SURFACES entry. Could be automated with a naming convention scan.
 - **Hash threshold hardcoded**: Group on/off hash mode uses threshold 0.3 (~70% on).
   Could be exposed as a property if needed.
-- **Shape keys**: Beat-driven dome deformation (breathing, bulging) — next feature.
+- **Shape keys**: Dome supports shape keys for morphing (e.g. half-cube, open cylinder,
+  flat disc). Create programmatically by repositioning vertices on the basis mesh.
+  The emission shader follows deformation since it uses `Geometry > Position`.
