@@ -7,7 +7,7 @@ own properties and material. A single frame handler processes all registered sur
 
 - **Axis-based naming** (`x_*`, `y_*`) instead of ring/spoke — scales to any geometry
 - **Per-surface properties** — each object controls its own animation independently
-- **Shared globals** on `HoloBubbleControl` — emission intensity, hue
+- **Per-axis color** — independent emission intensity and hue per axis per surface
 - **Negative rates** — all `*_per_beat` and `*_speed` properties support negative
   values for reverse direction
 - **Snap control** — per-axis `x_snap`/`y_snap` (0=smooth slide, 1=instant flip)
@@ -90,13 +90,8 @@ Per-axis `x_snap` / `y_snap` controls group transition style:
 
 ## Control properties
 
-### Shared globals (on HoloBubbleControl)
-
-| Property | Default | Description |
-|----------|---------|-------------|
-| `emission_intensity` | 8.0 | Peak emission brightness |
-| `emission_hue_base` | 0.55 | Base hue (0=red, 0.33=green, 0.55=cyan) |
-| `emission_hue_range` | 0.15 | Hue shift per BarRamp cycle |
+`HoloBubbleControl` is the parent empty for positioning. It has no custom properties —
+all control lives on each surface object.
 
 ### Per-surface properties (on each mesh object)
 
@@ -107,8 +102,19 @@ All `*_per_beat` and `*_speed` properties support **negative values for reverse*
 | **X/Y geometry** | | |
 | `x_count` | 12 (dome) / 6 (floor) | Number of X-axis lines |
 | `x_width` | 0.03 | X line thickness (0.01=hair, 0.1=thick) |
+| `x_offset` | 0 | Slides all X lines along the axis. 0.5=half-cell shift |
+| `x_alpha` | 1 | X line opacity: 0=invisible, 0.5=semi-transparent, 1=full |
 | `y_count` | 16 | Number of Y-axis lines |
 | `y_width` | 0.02 | Y line thickness |
+| `y_offset` | 0 | Slides all Y lines along the axis |
+| `y_alpha` | 1 | Y line opacity |
+| **X/Y color** | | |
+| `x_emission` | 8 | X peak emission intensity |
+| `x_hue` | 0.55 | X base hue (0=red, 0.33=green, 0.55=cyan) |
+| `x_hue_range` | 0 | X hue shift per BarRamp cycle. 0=static |
+| `y_emission` | 8 | Y peak emission intensity |
+| `y_hue` | 0.55 | Y base hue |
+| `y_hue_range` | 0 | Y hue shift per BarRamp cycle |
 | **X/Y pulse** | | |
 | `x_flashes_per_beat` | 0 | X pulse rate. 0=constant. Negative=reverse |
 | `x_flash_sharpness` | 2 | Pulse exponent: 1=smooth, 6=punchy, 8+=strobe |
@@ -152,6 +158,10 @@ properties (via `set_surface_props()`), add to SURFACES list.
 |-------|--------|
 | `v_x_count` | `x_count` property |
 | `v_x_width` | `x_width` property |
+| `v_x_offset` | `x_offset` property |
+| `v_x_alpha` | `x_alpha` property |
+| `v_x_emission` | `x_emission` property |
+| `v_x_hue` | computed: `x_hue + r * x_hue_range` |
 | `v_x_wave_count` | `x_wave_count` property |
 | `v_x_wave_phase` | computed: `t * wave_speed * 2pi` |
 | `v_x_step` | computed: snapped or raw `t * flips` |
@@ -160,8 +170,6 @@ properties (via `set_surface_props()`), add to SURFACES list.
 | `v_x_threshold` | hardcoded 0.3 |
 | `v_x_mode` | `x_pattern_mode` |
 | `v_x_pulse` | computed: `abs(sin(t*flashes*pi))^sharpness` |
-| `v_emission` | from HoloBubbleControl |
-| `v_hue` | computed: `hue_base + r * hue_range` |
 
 (Same for `v_y_*` prefix.)
 
@@ -176,3 +184,23 @@ properties (via `set_surface_props()`), add to SURFACES list.
 
 The material function handles coordinate mapping; the handler is geometry-agnostic
 and processes any surface with the standard property set.
+
+## Duplicating surfaces
+
+Each surface needs its own material (handler writes to value nodes per-material).
+To duplicate:
+1. Duplicate mesh data and material (`obj.data.copy()`, `mat.copy()`)
+2. Create new object, assign duplicated material
+3. Copy custom properties from original
+4. Add `(new_obj_name, new_mat_name)` to SURFACES and re-register handler
+
+## Known issues and future work
+
+- **World-space coordinates**: Material uses `Geometry > Position` (world space).
+  Moving a surface away from world origin shifts the pattern. Future fix: subtract
+  object origin in shader, or use Object coordinates with a PatternOrigin empty.
+- **Copies require manual registration**: Each duplicate needs its own material and
+  a SURFACES entry. Could be automated with a naming convention scan.
+- **Hash threshold hardcoded**: Group on/off hash mode uses threshold 0.3 (~70% on).
+  Could be exposed as a property if needed.
+- **Shape keys**: Beat-driven dome deformation (breathing, bulging) — next feature.
