@@ -379,15 +379,16 @@ Six pattern types available. All share:
 | **Concentric** | Distance + sine + threshold | `ring_count`, `ring_width` |
 | **Polar** | Normal vector + radial math | `rings`, `spokes` |
 | **Circle Polar** | Rings + spokes + frame handler | Independent ring/spoke flash, pattern, grid controls |
-| **HoloBubble** | Hemisphere + floor disc, emission + transparent | Rings, spokes, wave modulation, group on/off, strobe |
+| **HoloBubble** | Geometry-agnostic axis system, emission + transparent | Per-surface x/y props, wave, group strobe, snap, reverse |
 
 See `pattern-reference.md` for complete Python code for each pattern.
 
-The **HoloBubble** pattern is the recommended volumetric hologram effect. It creates
-a transparent hemisphere dome + floor disc with matching ring/spoke patterns. Uses a
-frame handler with a BarRamp beat counter for all timing. Designed to enclose a
-character as a holographic cage. See `holobubble-reference.md` for architecture,
-control properties, and TODO items for the strobe redesign.
+The **HoloBubble** pattern is a geometry-agnostic transparent emission system. Each
+surface object owns its own `x_*`/`y_*` properties (count, width, pulse, wave, group
+strobe, snap, pattern mode). A single frame handler processes all registered surfaces.
+Supports negative rates for reverse direction and per-axis snap (0=smooth, 1=instant).
+See `holobubble-reference.md` for architecture, property reference, and how to add
+new surfaces.
 
 ### Shared material preamble
 
