@@ -206,3 +206,9 @@ To duplicate:
 - **Shape keys**: Dome supports shape keys for morphing (e.g. half-cube, open cylinder,
   flat disc). Create programmatically by repositioning vertices on the basis mesh.
   The emission shader follows deformation since it uses `Geometry > Position`.
+- **Cube-face coord_mode**: Current coord_modes (`sphere`, `disc`) use spherical/polar
+  coordinates — patterns always look curved even on flat surfaces. Need a `cube` mode
+  that picks a planar UV per face based on dominant normal (X/Y/Z face → use the other
+  two axes). This enables straight grid lines on cube faces, walls, and floors.
+  Subdivided cube + sphere shape key would then give clean cube↔sphere morphing with
+  topology-correct patterns on both shapes.
