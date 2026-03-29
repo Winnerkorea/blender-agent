@@ -379,13 +379,15 @@ Six pattern types available. All share:
 | **Concentric** | Distance + sine + threshold | `ring_count`, `ring_width` |
 | **Polar** | Normal vector + radial math | `rings`, `spokes` |
 | **Circle Polar** | Rings + spokes + frame handler | Independent ring/spoke flash, pattern, grid controls |
+| **HoloBubble** | Hemisphere + floor disc, emission + transparent | Rings, spokes, wave modulation, group on/off, strobe |
 
 See `pattern-reference.md` for complete Python code for each pattern.
 
-The **Circle Polar** pattern is the recommended floor pattern for audio-viz scenes.
-It uses a frame handler (not drivers) for readable custom properties, a dual-BSDF
-material (fill + border, independently customizable), and separates flash rate from
-pattern change rate for both rings and spokes independently.
+The **HoloBubble** pattern is the recommended volumetric hologram effect. It creates
+a transparent hemisphere dome + floor disc with matching ring/spoke patterns. Uses a
+frame handler with a BarRamp beat counter for all timing. Designed to enclose a
+character as a holographic cage. See `holobubble-reference.md` for architecture,
+control properties, and TODO items for the strobe redesign.
 
 ### Shared material preamble
 
