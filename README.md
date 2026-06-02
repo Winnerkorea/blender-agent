@@ -1,6 +1,6 @@
 # Blender Agent
 
-[한국어 README](README.ko.md)
+[한국어 전체 문서](README.ko.md)
 
 Run Python in Blender via HTTP. No MCP, no protocol, no dependencies -- just `curl`.
 
@@ -8,6 +8,18 @@ Use Codex, Gemini CLI, or Claude Code to create 3D scenes, motion graphics, and
 video edits by describing what you want in plain English.
 
 Targets **Blender 5.1+** only.
+
+## 한국어 안내
+
+Blender Agent는 Blender 안에서 Python 코드를 HTTP로 실행하는 애드온입니다.
+Codex, Gemini CLI, Claude Code와 함께 사용해서 사용자가 원하는 형상, 비율,
+재질, 조명, 움직임을 대화로 설계하고 작은 Blender 수정 단위로 반복 적용하는
+방식을 목표로 합니다.
+
+이 fork는 [ptrthomas/blender-agent](https://github.com/ptrthomas/blender-agent)를
+기반으로 하며, Blender API 사용은 학습 데이터보다 저장소의 Skill 문서를
+우선합니다. 한국어 사용자는 [README.ko.md](README.ko.md)에서 설치, 실행,
+에이전트 사용 방식, 라이선스 정보를 확인할 수 있습니다.
 
 ## Fork
 
