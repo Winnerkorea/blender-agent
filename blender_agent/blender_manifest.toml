@@ -6,4 +6,4 @@ tagline = "Run Python via HTTP POST"
 maintainer = "Peter"
 type = "add-on"
 license = ["SPDX:MIT"]
-blender_version_min = "4.2.0"
+blender_version_min = "5.1.0"

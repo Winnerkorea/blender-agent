@@ -1,10 +1,20 @@
 # Blender Agent
 
-Run Python in Blender via HTTP. No MCP, no protocol, no dependencies — just `curl`.
+Run Python in Blender via HTTP. No MCP, no protocol, no dependencies -- just `curl`.
 
-Give [Claude Code](https://docs.anthropic.com/en/docs/claude-code) full control over Blender to create 3D scenes, motion graphics, and video edits by describing what you want in plain English.
+Use Codex, Gemini CLI, or Claude Code to create 3D scenes, motion graphics, and
+video edits by describing what you want in plain English.
 
-Targets **Blender 5.0+** only.
+Targets **Blender 5.1+** only.
+
+## Fork
+
+This repository is forked from
+[ptrthomas/blender-agent](https://github.com/ptrthomas/blender-agent). The original
+project is maintained by Peter Thomas and provides the Blender HTTP addon plus the
+initial Claude Code skill workflow. This fork adapts the project for Codex and Gemini
+CLI, keeps skill-guided Blender API usage as the source of truth, and adds a
+conversational design workflow for iterating on scene forms.
 
 ## Quick start
 
@@ -13,8 +23,8 @@ Targets **Blender 5.0+** only.
 Symlink into Blender's extensions directory (one-time):
 
 ```bash
-mkdir -p ~/Library/Application\ Support/Blender/5.0/extensions/user_default
-ln -sf $(pwd)/blender_agent ~/Library/Application\ Support/Blender/5.0/extensions/user_default/blender_agent
+mkdir -p ~/Library/Application\ Support/Blender/5.1/extensions/user_default
+ln -sf $(pwd)/blender_agent ~/Library/Application\ Support/Blender/5.1/extensions/user_default/blender_agent
 ```
 
 Then enable it in Blender: **Edit > Preferences > Add-ons**, search for "Blender Agent" and check the box.
@@ -39,11 +49,11 @@ Open the 3D Viewport sidebar (press `N`), find the **Agent** tab, and click **St
 curl -s localhost:5656 --data-binary @- <<< 'bpy.app.version_string'
 ```
 
-Should return: `{"ok": true, "result": "5.0.1", "output": ""}`
+Should return something like: `{"ok": true, "result": "5.1.0", "output": ""}`
 
-## Using with Claude Code
+## Using with Agents
 
-This is the primary use case. The repo includes [Agent Skills](https://docs.anthropic.com/en/docs/claude-code/skills) that teach Claude how to drive Blender:
+The repo includes Agent Skills that teach coding agents how to drive Blender:
 
 | Skill | Triggers on |
 |-------|-------------|
@@ -51,8 +61,22 @@ This is the primary use case. The repo includes [Agent Skills](https://docs.anth
 | `blender-3d` | 3D objects, materials, cameras, lights, animation, rendering |
 | `blender-vse` | Video editing, timelines, text overlays, transitions |
 | `blender-geometry-nodes` | Geometry nodes, procedural geometry, instancing, scatter |
+| `blender-laser` | Laser beams, raycast reflections, bouncing light paths |
+| `blender-projector` | Spotlight projection patterns, gobos, volumetric beams |
+| `blender-audioviz` | Audio extraction, beat-synced lights, reactive materials |
 
-Skills are auto-loaded — just ask Claude what you want:
+Agent entry points:
+
+- Codex: read `AGENTS.md`; use `.agents/skills/` as the canonical skill tree.
+- Gemini CLI: read `GEMINI.md`; it imports `AGENTS.md` and points to the same skills.
+- Claude Code: read `CLAUDE.md`; `.claude/skills/` is kept as a compatibility mirror.
+
+The intended workflow is conversational design. Describe the form you want to create
+or change, discuss shape, proportions, materials, lighting, and motion with the agent,
+then let the agent make small skill-guided Blender edits and inspect the result with
+you. Skill docs should drive Blender API usage more than model training data.
+
+Just ask the agent what you want:
 
 ```
 > create a glowing neon cube that rotates and render it to video with bloom
@@ -62,13 +86,14 @@ Skills are auto-loaded — just ask Claude what you want:
 > set up a 3-point lighting rig and render a turntable animation
 ```
 
-Claude will send Python code to Blender, render frames, inspect the output visually, and iterate until it looks right.
+The agent sends Python code to Blender, renders frames, inspects the output visually,
+and iterates until it looks right.
 
 ### Tips
 
-- **Start Blender first.** Claude can do this for you if you ask, but it's faster to have it running already.
+- **Start Blender first.** Agents can do this for you if you ask, but it's faster to have it running already.
 - **Output goes to `output/`.** An `OUTPUT` variable is injected into all code, so use `f"{OUTPUT}/render.mp4"` for output paths.
-- **Visual feedback.** Claude renders test frames and inspects them to iterate on aesthetics — this is normal and useful.
+- **Visual feedback.** Agents render test frames and inspect them to iterate on aesthetics; this is normal and useful.
 
 ## Manual usage (curl)
 
@@ -115,3 +140,7 @@ bpy.context.preferences.view.show_splash = False
 bpy.ops.wm.save_userpref()
 PYEOF
 ```
+
+## License
+
+This project is licensed under the MIT License. See [LICENSE](LICENSE).
