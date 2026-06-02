@@ -1,5 +1,7 @@
 # Blender Agent
 
+[한국어 README](README.ko.md)
+
 Run Python in Blender via HTTP. No MCP, no protocol, no dependencies -- just `curl`.
 
 Use Codex, Gemini CLI, or Claude Code to create 3D scenes, motion graphics, and
