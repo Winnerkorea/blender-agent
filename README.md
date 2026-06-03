@@ -124,6 +124,12 @@ and official Blender documentation for API behavior, use internal guides for com
 design constraints, and avoid sending confidential material to external services unless
 explicitly approved.
 
+If no internal design guide exists, use Blender's official Human Interface Guidelines,
+Layouts guidance, and Add-on Guidelines as the default design rules. In practice: follow
+Blender UI conventions, expose important controls first, group related properties, avoid
+decorative layouts that do not fit Blender's UI system, and keep add-on behavior
+self-contained.
+
 Just ask the agent what you want:
 
 ```

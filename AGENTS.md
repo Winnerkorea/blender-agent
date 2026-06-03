@@ -144,6 +144,24 @@ When working in a company or local-LLM setup:
 7. Capture reusable non-confidential patterns in skills or docs. Keep confidential
    company knowledge in private local documentation controlled by the team.
 
+If no internal design guide exists, fall back to Blender's official design guidance:
+
+- Human Interface Guidelines: https://developer.blender.org/docs/features/interface/
+- Layout rules: https://developer.blender.org/docs/features/interface/human_interface_guidelines/layouts/
+- Add-on Guidelines: https://developer.blender.org/docs/handbook/extensions/addon_guidelines/
+- Add-on Development Setup: https://developer.blender.org/docs/handbook/extensions/addon_dev_setup/
+
+Use these as practical defaults:
+
+- Follow Blender UI conventions instead of inventing a separate interface style.
+- Expose the most important and frequently used controls first.
+- Group related properties with clear headings or sub-panels.
+- Use dropdowns for enums with many choices; use compact toggles only when quick
+  switching matters.
+- Avoid complex or decorative layouts that do not integrate with Blender's UI system.
+- Keep add-on behavior self-contained and avoid global side effects outside the add-on
+  namespace.
+
 Recommended documentation layers:
 
 - Public base: `AGENTS.md`, `README.md`, `README.ko.md`, public skills, official Blender docs.

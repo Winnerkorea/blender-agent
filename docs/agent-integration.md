@@ -101,6 +101,22 @@ Rules:
 7. If company constraints conflict with Blender defaults, explain the tradeoff and ask
    which constraint wins.
 
+If no company guide exists, use Blender's official design guidance as the fallback:
+
+- Human Interface Guidelines: https://developer.blender.org/docs/features/interface/
+- Layout rules: https://developer.blender.org/docs/features/interface/human_interface_guidelines/layouts/
+- Add-on Guidelines: https://developer.blender.org/docs/handbook/extensions/addon_guidelines/
+- Add-on Development Setup: https://developer.blender.org/docs/handbook/extensions/addon_dev_setup/
+
+Fallback design rules:
+
+- Match Blender's existing UI conventions.
+- Put important and frequent controls first.
+- Group related controls with headings or sub-panels.
+- Use dropdowns for enum-heavy controls and toggles for quick mode switching.
+- Avoid complex visual layouts that do not fit Blender's UI system.
+- Keep add-ons self-contained and avoid global side effects.
+
 ## Gemini CLI Workflow
 
 Gemini CLI should:
