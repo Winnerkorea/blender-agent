@@ -58,6 +58,22 @@ Official references to use:
 - Extension command line: https://docs.blender.org/manual/en/dev/advanced/command_line/extension_arguments.html
 - Blender 5.1 Python API notes: https://developer.blender.org/docs/release_notes/5.1/python_api/
 
+## Modeling Issue Support
+
+Treat "I got stuck while modeling" as a first-class workflow. The agent should help the
+user learn how to solve the issue, not only patch the current scene.
+
+For each issue:
+
+1. Capture expected vs actual behavior.
+2. Classify the issue: concept, Blender UI, add-on feature, Python API, geometry nodes,
+   material, animation, rendering, or packaging.
+3. Search the local skills first.
+4. Use official Blender documentation or a clearly cited guide for gaps.
+5. Convert the answer into a small testable action.
+6. Verify inside Blender.
+7. Add the learned pattern to docs or skills when it is reusable.
+
 ## Gemini CLI Workflow
 
 Gemini CLI should:

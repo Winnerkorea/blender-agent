@@ -106,6 +106,14 @@ Official Blender references:
 - [Extension command line](https://docs.blender.org/manual/en/dev/advanced/command_line/extension_arguments.html)
 - [Blender 5.1 Python API notes](https://developer.blender.org/docs/release_notes/5.1/python_api/)
 
+## Modeling Issue Support
+
+The workflow is designed for the moment when a user gets stuck while modeling and asks,
+"How should I solve this?" The agent should clarify the expected result, classify the
+issue, consult the relevant Skill, check official Blender documentation when needed,
+and turn the answer into a small Blender-verifiable step. This should help both expert
+users who need API detail and general users who need practical guidance inside Blender.
+
 Just ask the agent what you want:
 
 ```

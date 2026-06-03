@@ -93,6 +93,32 @@ installation:
 - Extension command line: https://docs.blender.org/manual/en/dev/advanced/command_line/extension_arguments.html
 - Blender Python API and release notes: https://developer.blender.org/docs/release_notes/5.1/python_api/
 
+## Modeling Issue Support
+
+Users often discover the real problem while modeling: a shape does not deform as
+expected, a material is hard to control, geometry nodes become confusing, an operator
+does not expose the right option, or an add-on workflow is unclear. Treat these moments
+as the core use case.
+
+When an issue appears during modeling:
+
+1. Ask the user what they expected to happen and what actually happened.
+2. Identify whether the issue is conceptual, Blender UI workflow, add-on behavior,
+   Python API usage, geometry, material, animation, rendering, or packaging.
+3. Explain the likely cause in user-friendly terms before proposing code.
+4. Use skills for established local patterns.
+5. Use official Blender documentation or a clearly cited guide when the skill does not
+   answer the issue.
+6. Turn the answer into an actionable Blender step: a UI action, add-on feature,
+   script change, scene adjustment, or documentation update.
+7. Verify the fix in Blender and add the learned pattern back to a skill or docs when
+   it will help future users.
+
+This workflow should serve both experts and general users. Experts may want direct API
+details; general users may need the same answer framed as design choices and Blender UI
+steps. Prefer explaining enough that the user learns how to solve the next related
+problem, not only the current one.
+
 Do not use auto-memory. Do not create or write to `MEMORY.md` or memory directories.
 All durable project knowledge belongs in `AGENTS.md`, `GEMINI.md`, `CLAUDE.md`, the
 skill files, or explicit docs under `docs/`.
