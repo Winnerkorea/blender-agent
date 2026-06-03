@@ -74,6 +74,33 @@ For each issue:
 6. Verify inside Blender.
 7. Add the learned pattern to docs or skills when it is reusable.
 
+## Company and Local LLM Support
+
+Company workflows may include private design systems, asset rules, approval stages, or
+security restrictions. Local LLMs may be used when scene files, screenshots, logs,
+prompts, or design rules cannot leave the company environment.
+
+Design the integration around layered knowledge:
+
+- Public layer: Blender official documentation, public skills, README files, open-source
+  add-on code.
+- Team layer: private design rules, naming conventions, asset libraries, review
+  checklists, examples, and approved workflows.
+- Local LLM layer: offline retrieval indexes, local prompts, private summaries, and
+  internal Q&A over team documents.
+
+Rules:
+
+1. Ask whether company-specific design constraints exist before broad changes.
+2. Keep internal guides separate from public Blender facts.
+3. Use local LLMs for private ideation and retrieval when cloud tools are disallowed.
+4. Do not send confidential files, images, logs, or rules to external services without
+   explicit user approval.
+5. Use official Blender docs for API behavior and extension packaging.
+6. Use skills for project-tested patterns.
+7. If company constraints conflict with Blender defaults, explain the tradeoff and ask
+   which constraint wins.
+
 ## Gemini CLI Workflow
 
 Gemini CLI should:

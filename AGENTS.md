@@ -119,6 +119,38 @@ details; general users may need the same answer framed as design choices and Ble
 steps. Prefer explaining enough that the user learns how to solve the next related
 problem, not only the current one.
 
+## Company and Local LLM Workflows
+
+Some teams have internal design systems, modeling conventions, approval processes, or
+private asset rules. Some environments also use local LLMs because project files,
+assets, or design discussions cannot leave the company network. Support these workflows
+without changing the core principle: skills and verified documentation are the source of
+truth.
+
+When working in a company or local-LLM setup:
+
+1. Ask whether there are internal design rules, naming conventions, asset libraries,
+   review steps, or restricted data before proposing broad changes.
+2. Treat internal guides as project-specific references, but keep them separate from
+   public Blender facts and official API behavior.
+3. Use local LLMs for private brainstorming, summarizing internal guides, and proposing
+   design options when cloud tools are not allowed.
+4. Do not send confidential scene files, assets, prompts, screenshots, logs, or company
+   design rules to external services unless the user explicitly approves it.
+5. Prefer local docs, local skills, and official Blender documentation for API and
+   add-on implementation decisions.
+6. When an internal rule conflicts with a public Blender pattern, explain the conflict
+   and ask which constraint should win.
+7. Capture reusable non-confidential patterns in skills or docs. Keep confidential
+   company knowledge in private local documentation controlled by the team.
+
+Recommended documentation layers:
+
+- Public base: `AGENTS.md`, `README.md`, `README.ko.md`, public skills, official Blender docs.
+- Team layer: private company design rules, asset naming rules, review checklists, local examples.
+- Local LLM layer: private prompts, local retrieval indexes, and offline summaries that never
+  leave the company environment.
+
 Do not use auto-memory. Do not create or write to `MEMORY.md` or memory directories.
 All durable project knowledge belongs in `AGENTS.md`, `GEMINI.md`, `CLAUDE.md`, the
 skill files, or explicit docs under `docs/`.

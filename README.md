@@ -114,6 +114,16 @@ issue, consult the relevant Skill, check official Blender documentation when nee
 and turn the answer into a small Blender-verifiable step. This should help both expert
 users who need API detail and general users who need practical guidance inside Blender.
 
+## Company and Local LLM Workflows
+
+Teams may have internal design rules, private asset libraries, review checklists, or
+security policies. They may also use local LLMs when design files, screenshots, logs, or
+company guidelines cannot leave the network. This fork supports that pattern by keeping
+public Blender knowledge, team-specific rules, and local-LLM context separate. Use Skills
+and official Blender documentation for API behavior, use internal guides for company
+design constraints, and avoid sending confidential material to external services unless
+explicitly approved.
+
 Just ask the agent what you want:
 
 ```
