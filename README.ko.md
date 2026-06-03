@@ -101,6 +101,30 @@ Blender API 사용은 학습 데이터보다 Skill 문서를 우선합니다. Sk
 Blender 5.1 변경점이 나오면 공식 문서를 확인하고, 확인된 패턴은 Skill 문서에
 반영합니다.
 
+## 질문 기반 Add-on 설계
+
+우리가 설계하려는 것은 단순한 결과 이미지가 아니라, Blender 안에서 계속 사용할 수
+있는 Add-on 기능과 작업 흐름입니다. 따라서 에이전트는 바로 코드를 작성하기보다
+질문을 통해 문제를 구체화해야 합니다.
+
+진행 방식:
+
+1. 사용자가 Blender 안에서 무엇을 바꾸고 싶은지 질문합니다.
+   예: 형상, 조작 패널, operator 동작, procedural geometry, 재질 반응, 렌더 흐름.
+2. 그 요구를 Blender Add-on 기능으로 다시 정의합니다.
+3. 관련 Skill 문서를 먼저 확인합니다.
+4. Skill에 없는 부분은 Blender 공식 문서에서 확인합니다.
+5. Blender 안에서 바로 테스트할 수 있는 작은 구현 단위를 제안합니다.
+6. Add-on 코드나 Skill 기반 Blender script로 적용합니다.
+7. 결과를 확인하고, 설계 의도와 맞는지 다시 대화합니다.
+
+참고할 Blender 공식 문서:
+
+- Extension 생성: https://docs.blender.org/manual/en/latest/advanced/extensions/
+- Add-ons 설치와 Preferences: https://docs.blender.org/manual/en/latest/editors/preferences/addons.html
+- Extension 명령줄 사용: https://docs.blender.org/manual/en/dev/advanced/command_line/extension_arguments.html
+- Blender 5.1 Python API 변경점: https://developer.blender.org/docs/release_notes/5.1/python_api/
+
 예시 요청:
 
 ```text

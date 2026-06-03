@@ -90,6 +90,22 @@ or change, discuss shape, proportions, materials, lighting, and motion with the 
 then let the agent make small skill-guided Blender edits and inspect the result with
 you. Skill docs should drive Blender API usage more than model training data.
 
+## Question-Driven Add-on Design
+
+This fork is meant to design Blender add-on capabilities through questions, not just
+generate one-off scenes. First clarify what should change inside Blender: shape,
+controls, operators, procedural geometry, materials, lighting, or rendering workflow.
+Then map that intent to a small add-on feature, check the relevant Skill, verify missing
+details against official Blender documentation, implement a small step, and test it in
+Blender.
+
+Official Blender references:
+
+- [Creating Extensions](https://docs.blender.org/manual/en/latest/advanced/extensions/)
+- [Add-ons Preferences](https://docs.blender.org/manual/en/latest/editors/preferences/addons.html)
+- [Extension command line](https://docs.blender.org/manual/en/dev/advanced/command_line/extension_arguments.html)
+- [Blender 5.1 Python API notes](https://developer.blender.org/docs/release_notes/5.1/python_api/)
+
 Just ask the agent what you want:
 
 ```

@@ -68,6 +68,31 @@ user design Blender scenes through conversation.
 - Keep the process collaborative: propose alternatives, explain tradeoffs, and let the
   user's evolving intent steer the final form.
 
+## Question-Driven Add-on Design
+
+The main product is not only a rendered scene. The main product is a Blender add-on
+workflow that lets the user keep designing inside Blender.
+
+For feature work, proceed in this order:
+
+1. Ask what the user wants to change in Blender: shape, control surface, UI panel,
+   operator behavior, generated geometry, material response, or render workflow.
+2. Restate the design problem as a Blender add-on capability.
+3. Check the relevant skill first for known Blender 5.1 API patterns.
+4. Check official Blender documentation when the skill does not cover the API,
+   extension packaging, add-on UI, preferences, operators, or command-line behavior.
+5. Propose a small implementation step that can be tested inside Blender.
+6. Implement through the add-on or skill-guided Blender script.
+7. Verify in Blender, then discuss what the result means for the design.
+
+Use official Blender documentation as the reference for extension structure and user
+installation:
+
+- Extension creation: https://docs.blender.org/manual/en/latest/advanced/extensions/
+- Add-ons preferences and installation: https://docs.blender.org/manual/en/latest/editors/preferences/addons.html
+- Extension command line: https://docs.blender.org/manual/en/dev/advanced/command_line/extension_arguments.html
+- Blender Python API and release notes: https://developer.blender.org/docs/release_notes/5.1/python_api/
+
 Do not use auto-memory. Do not create or write to `MEMORY.md` or memory directories.
 All durable project knowledge belongs in `AGENTS.md`, `GEMINI.md`, `CLAUDE.md`, the
 skill files, or explicit docs under `docs/`.

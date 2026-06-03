@@ -11,6 +11,8 @@ project migrates to a shared skill layout.
 - Make Codex and Gemini use the same Blender workflow.
 - Make Blender work conversational: design intent first, skill-guided implementation
   second.
+- Design add-on capabilities through questions, official Blender documentation, and
+  small Blender-verifiable implementation steps.
 - Preserve Claude Code compatibility until the duplicate `.claude/skills/` tree can be
   removed or replaced by a generated mirror.
 
@@ -35,6 +37,26 @@ Codex should:
 6. Use `OUTPUT` for renders, screenshots, and logs.
 7. Share what changed, compare it to the user's intent, and continue iterating.
 8. Update the relevant skill when a Blender 5.1 API correction is discovered.
+
+## Add-on Problem-Solving Loop
+
+Use this loop whenever the user is designing functionality, not just scene content:
+
+1. Ask what Blender behavior the user wants to change or add.
+2. Translate the answer into an add-on capability: panel, operator, property,
+   generated geometry, material driver, render workflow, or extension packaging.
+3. Read the relevant skill for known API patterns.
+4. Check official Blender documentation for missing or uncertain behavior.
+5. Propose a small implementation that can be tested inside Blender.
+6. Implement and verify through the HTTP server, UI, render, screenshot, or log.
+7. Discuss whether the result solves the design problem before expanding scope.
+
+Official references to use:
+
+- Extensions: https://docs.blender.org/manual/en/latest/advanced/extensions/
+- Add-ons preferences: https://docs.blender.org/manual/en/latest/editors/preferences/addons.html
+- Extension command line: https://docs.blender.org/manual/en/dev/advanced/command_line/extension_arguments.html
+- Blender 5.1 Python API notes: https://developer.blender.org/docs/release_notes/5.1/python_api/
 
 ## Gemini CLI Workflow
 
